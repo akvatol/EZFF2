@@ -2,12 +2,14 @@
 import os
 import xtal
 import numpy as np
-import ezff
 from ezff.ffio import generate_forcefield as gen_ff
 from ezff.utils import convert_units as convert
 import distutils
-from distutils import spawn
 
+if os.name == 'nt':
+    DELIMITER = ' & '
+else:
+    DELIMITER = ' ; '
 
 
 class job:
@@ -41,35 +43,13 @@ class job:
             "phonon_dispersion_from": None,
             "phonon_dispersion_to": None,
             "phonon_G":None, # Phonons at gamma point
-            "sshift": None
+            "sshift": None,
+            'kpoints': None,
+            'timer':30
             }
         self.verbose = verbose
         if verbose:
             print('Created a new GULP job')
-
-    @classmethod
-    def from_dict(cls, root, data:dict):
-        # only PBC
-        job = cls(path=os.path.join(os.path.abspath(root), data['name']))
-        job['structure'] = data['structure']
-        job.options['pbc'] = True
-        job.options["relax_atoms"] = True
-        job.options["relax_cell"] = True
-
-        if data.get['phonon_G']:
-            job.options['phonon_G'] = True
-        else:
-            pass
-
-        if data['phonon_dispersion']:
-            job.options['phonon_dispersion'] = True
-        else:
-            pass
-
-        job.options["phonon_dispersion_from"] = data.get("phonon_dispersion_from")
-        job.options["phonon_dispersion_to"] = data.get("phonon_dispersion_to")
-        
-        return job
 
     def generate_forcefield(self, template_string, parameters, FFtype = None, outfile = None):
         self.options['fftype'] = FFtype.upper()
@@ -77,7 +57,7 @@ class job:
         return forcefield
 
 
-    def run(self, command = None, timeout = None):
+    def run(self, command = None):
         """
         Execute GULP job with user-defined parameters
 
@@ -100,12 +80,9 @@ class job:
 
         system_call_command = command + ' < ' + self.scriptfile + ' > ' + self.outfile + ' 2> ' + self.outfile + '.runerror'
 
-        if timeout is not None:
-            system_call_command = 'timeout ' + str(timeout) + ' ' + system_call_command
-
         if self.verbose:
-            print('cd '+ self.path + ' ; ' + system_call_command)
-        os.system('cd '+ self.path + ' ; ' + system_call_command)
+            print('cd '+ self.path + DELIMITER + system_call_command)
+        os.system('cd '+ self.path + DELIMITER + system_call_command)
 
 
 
@@ -114,76 +91,80 @@ class job:
         Write-out a complete GULP script file, ``job.scriptfile``, based on job parameters
         """
         opts = self.options
-        script = open(self.scriptfile,'w')
-        header_line = ''
-        if opts['relax_atoms']:
-            header_line += 'optimise c6 '
+        with open (self.scriptfile,'w') as script:
+            header_line = ''
+            if opts['relax_atoms']:
+                header_line += 'optimise c6 '
 
-            if opts['relax_cell']:
-                header_line += 'conp '
+                if opts['relax_cell']:
+                    header_line += 'conp '
+                else:
+                    header_line += 'conv '
+
+            if opts['phonon_G']:
+                header_line += 'phonon nononanal '
+
+            if header_line == '':
+                header_line = 'gradient '
+
+            if opts['phonon_dispersion'] is not None:
+                header_line += 'phonon nofrequency '
+
+            if opts['atomic_charges']:
+                header_line += 'qiterative '
+
+            header_line += 'comp property '
+            script.write(header_line + '\n')
+
+            if opts['timer']:
+                script.write(f'time {opts["timer"]}\n')
+
+            # Write forcefield into script
+            script.write(self.forcefield)
+
+            script.write('\n')
+            script.write('\n')
+
+            if opts['pbc']:
+                for snapshot in self.structure.snaplist:
+                    script.write('vectors\n')
+                    script.write(np.array_str(self.structure.box).replace('[','').replace(']','') + '\n')
+                    script.write('Fractional\n')
+                    for atom in snapshot.atomlist:
+                        positions = atom.element.title() + ' core '
+                        positions += np.array_str(atom.fract).replace('[','').replace(']','')
+                        positions += ' 0.0   1.0   0.0   1 1 1 \n'
+                        script.write(positions)
+                    script.write('\n\n\n')
             else:
-                header_line += 'conv '
+                for snapshot in self.structure.snaplist:
+                    script.write('Cartesian\n')
+                    for atom in snapshot.atomlist:
+                        positions = atom.element.title() + ' core '
+                        positions += np.array_str(atom.cart).replace('[','').replace(']','')
+                        positions += ' 0.0   1.0   0.0   1 1 1 \n'
+                        script.write(positions)
+                    script.write('\n\n\n')
+            script.write('\n')
 
-        if opts['phonon_G']:
-            header_line += 'phonon nononanal '
+            if opts["sshift"]:
+                script.write(f'sshift {opts["sshift"]}\n')
+            else:
+                pass
+            
+            if opts['kpoints']:
+                script.write(f"kpoints {len(opts['kpoints'])}\n")
+                for i in opts['kpoints']:
+                    script.write(f'{i}\n')
 
-        if header_line == '':
-            header_line = 'gradient '
+            if opts['phonon_dispersion_from'] is not None:
+                if opts['phonon_dispersion_to'] is not None:
+                    script.write('dispersion 1 100 \n')
+                    script.write(opts['phonon_dispersion_from'] + ' to ' + opts['phonon_dispersion_to']+'\n')
+                    script.write('output phonon ' + os.path.basename(self.outfile + '.disp'))
+                    script.write('\n')
 
-        if opts['phonon_dispersion'] is not None:
-            header_line += 'phonon nofrequency '
-
-        if opts['atomic_charges']:
-            header_line += 'qiterative '
-
-        header_line += 'comp property '
-        script.write(header_line + '\n')
-
-        if opts["sshift"]:
-            script.write(f'sshift {opts["sshift"]}\n')
-
-        script.write('\n')
-        script.write('\n')
-
-        # Write forcefield into script
-        script.write(self.forcefield)
-
-        script.write('\n')
-        script.write('\n')
-
-        if opts['pbc']:
-            for snapshot in self.structure.snaplist:
-                script.write('vectors\n')
-                script.write(np.array_str(self.structure.box).replace('[','').replace(']','') + '\n')
-                script.write('Fractional\n')
-                for atom in snapshot.atomlist:
-                    positions = atom.element.title() + ' core '
-                    positions += np.array_str(atom.fract).replace('[','').replace(']','')
-                    positions += ' 0.0   1.0   0.0   1 1 1 \n'
-                    script.write(positions)
-                script.write('\n\n\n')
-        else:
-            for snapshot in self.structure.snaplist:
-                script.write('Cartesian\n')
-                for atom in snapshot.atomlist:
-                    positions = atom.element.title() + ' core '
-                    positions += np.array_str(atom.cart).replace('[','').replace(']','')
-                    positions += ' 0.0   1.0   0.0   1 1 1 \n'
-                    script.write(positions)
-                script.write('\n\n\n')
-        script.write('\n')
-
-
-        if opts['phonon_dispersion_from'] is not None:
-            if opts['phonon_dispersion_to'] is not None:
-                script.write('dispersion 1 100 \n')
-                script.write(opts['phonon_dispersion_from'] + ' to ' + opts['phonon_dispersion_to']+'\n')
-                script.write('output phonon ' + os.path.basename(self.outfile + '.disp'))
-                script.write('\n')
-
-        script.write('\n')
-
-        script.close()
+            script.write('\n')
 
     def cleanup(self):
         """
