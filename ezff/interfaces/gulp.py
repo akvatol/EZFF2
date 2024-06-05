@@ -43,6 +43,8 @@ class job:
             "phonon_dispersion_from": None,
             "phonon_dispersion_to": None,
             "phonon_G":None, # Phonons at gamma point
+            "gulp":None,
+            "template":None,
             "sshift": None,
             'kpoints': None,
             'timer':30
@@ -114,7 +116,11 @@ class job:
                 header_line += 'qiterative '
 
             header_line += 'comp property '
-            script.write(header_line + '\n')
+
+            if opts['template'] is None:
+                script.write(header_line + '\n')
+            else:
+                pass
 
             if opts['timer']:
                 script.write(f'time {opts["timer"]}\n')
@@ -124,8 +130,9 @@ class job:
 
             script.write('\n')
             script.write('\n')
-
-            if opts['pbc']:
+            if opts['template']:
+                pass
+            elif opts['pbc']:
                 for snapshot in self.structure.snaplist:
                     script.write('vectors\n')
                     script.write(np.array_str(self.structure.box).replace('[','').replace(']','') + '\n')
@@ -136,6 +143,9 @@ class job:
                         positions += ' 0.0   1.0   0.0   1 1 1 \n'
                         script.write(positions)
                     script.write('\n\n\n')
+            elif opts['gulp']:
+                script.write(opts['gulp'])
+                script.write('\n\n\n')
             else:
                 for snapshot in self.structure.snaplist:
                     script.write('Cartesian\n')
@@ -177,8 +187,6 @@ class job:
             elif os.path.isfile(self.path+'/'+file):
                 os.remove(self.path+'/'+file)
 
-
-
     ## OOP methods for reading output from GULP
     def read_energy(self):
         """
@@ -218,16 +226,22 @@ class job:
 
         :returns: xtal.AtTraj object with (optimized) individual structures as separate snapshots
         """
-        return _read_structure(self.outfile, relax_cell=self.options['relax_cell'], initial_box=self.structure.box)
+        return _read_structure(self.outfile, relax_cell=self.options['relax_cell'])
 
     def read_phonon_G(self, n):
         return _read_phonon_G(self.outfile, n=n)
+
+    def read_phonon_kpoints(self, n_freqs):
+        return _read_phonon_kpoints(self.outfile, n_freqs=n_freqs)
 
     def read_bulk_shear(self):
         return _read_bulk_shear(self.outfile)
 
     def read_young_xyz(self):
         return _read_young_xyz(self.outfile)
+
+    def read_final_error(self):
+        return _read_final_error(self.outfile)
 
 def _read_young_xyz(outfilename):
     """
@@ -290,15 +304,26 @@ def _read_phonon_G(outfilename, n):
             i = 0
     return freq[:n]
 
-def _read_bulk_shear(otfilename):
-    """
-    Read Bulk and shear moduli from a completed GULP job
+def _read_phonon_kpoints(file:str, n_freqs:list):
+    import re
+    regex = r"Frequencies \(cm-1\) \[NB: Negative implies an imaginary mode\]:\s+((?:\-*\d+\.\d+\s+)+)"
+    data = []
+    with open(file, 'r') as fr:
+        data_ = fr.read()
+        # Use re.DOTALL to ensure the dot matches newline characters
+        res = re.findall(regex, data_, re.DOTALL)
+    if res:
+        for i, match in enumerate(res):
+            x = match.split()
+            data.append([float(j) for j in x[:n_freqs[i]]])
+    else:
+        for i in n_freqs:
+            data.append([10000]*i)
+    return data
 
-    :param outfilename: Path of the stdout from the GULP job
-    :type outfilename: str
-    :returns: Values of Bulk and shear moduli packed in a tuple
-    """
-    _bulk_value, _shear_value = float(0), float(0)
+def _read_bulk_shear(otfilename):
+    ##
+    _bulk_value, _shear_value = float(1000), float(1000)
     with open(otfilename, 'r') as fr:
         try:
             for line in fr:
@@ -431,7 +456,13 @@ def _read_atomic_charges(outfilename):
                     atom.charge = float(charges[-1])
     return structure
 
-
+def _read_final_error(outfilename):
+    with open(outfilename, 'r') as fr:
+        err = None
+        for line in fr:
+            if "Final sum of squares" in line:
+                err = float(line.split('=')[-1].strip())
+    return err if err else 10**10
 
 def _read_structure(outfilename, relax_cell=True, initial_box=None, D='3'):
     import re

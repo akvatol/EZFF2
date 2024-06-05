@@ -113,3 +113,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+ezff/test.ipynb
+ezff/HfS2_opt.ipynb

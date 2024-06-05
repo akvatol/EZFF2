@@ -2,8 +2,9 @@
 import numpy as np
 import time
 from ezff.utils.reaxff import reax_forcefield
+from collections import OrderedDict
 
-def read_variable_bounds(filename, verbose=False):
+def read_variable_bounds(filename):
     """Read permissible lower and upper bounds for decision variables used in forcefields optimization
 
     :param filename: Name of text file listing bounds for each decision variable that must be optimized
@@ -12,7 +13,7 @@ def read_variable_bounds(filename, verbose=False):
     :param verbose: Print all variables read-in
     :type verbose: bool
     """
-    variable_bounds = {}
+    variable_bounds = OrderedDict()
     while True: # Force-read the parameter bounds file. This will loop until something is read-in. This is required if multiple ranks access the same file at the same time
         time.sleep(np.random.rand())
         with open(filename, 'r') as variable_bounds_file:
@@ -25,12 +26,6 @@ def read_variable_bounds(filename, verbose=False):
                     variable_bounds[key] = list(map(float, values))
         if not variable_bounds == {}:
             break
-
-    if verbose:
-        allkeys = ''
-        for key in variable_bounds:
-            allkeys += str(key) + ', '
-        print('Keys: ' + allkeys[:-2] + ' read from ' + filename)
 
     return variable_bounds
 
