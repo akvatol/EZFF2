@@ -1,24 +1,23 @@
 # General import
-import pandas as pd
 import numpy as np
-
-# EZFF utils import
-from . import ffio
-from ezff.ffio import generate_forcefield as gen_ff
+import pandas as pd
+from joblib import Parallel, delayed
+from pymoo.core.evaluator import Evaluator
 
 # PyMOO
 from pymoo.core.problem import Problem
-from pymoo.core.callback import Callback
 from pymoo.core.termination import NoTermination
-from pymoo.core.evaluator import Evaluator
 from pymoo.problems.static import StaticProblem
-from joblib import Parallel, delayed
 
+from ezff.ffio import generate_forcefield as gen_ff
+
+# EZFF utils import
+from . import ffio
 
 __version__ = "1.0.3"  # Update setup.py if version changes
 
 
-def _get_mins_maxs(variable_bounds: dict):
+def _get_mins_maxs(variable_bounds: dict) -> tuple[list[float], list[float]]:
     var_min = [min(i) for i in variable_bounds.values()]
     var_max = [max(i) for i in variable_bounds.values()]
     return var_min, var_max
@@ -47,17 +46,16 @@ def define_problem(
     *,
     num_errors: int,
     num_variables: int,
-    variable_bounds: str,
+    variable_bounds: dict[str, tuple[float, float]],
 ) -> Problem:
-    """
-    Define a PyMOO problem instance.
+    """Define a PyMOO problem instance.
 
     Returns:
     Problem: An instance of the MyProblem class.
     """
 
     class MyProblem(Problem):
-        def __init__(selfself, **kwargs):
+        def __init__(self, **kwargs):
             xl, xu = _get_mins_maxs(variable_bounds)
             super().__init__(
                 n_var=num_variables,
@@ -71,14 +69,10 @@ def define_problem(
     return MyProblem()
 
 
-class MyCallback(Callback):
-    """
-    A custom callback class for PyMOO.
-    """
+class MyCallback:
 
-    def __init__(self, folder_path: str = None) -> None:
-        """
-        Initialize the callback instance.
+    def __init__(self, folder_path: str) -> None:
+        """Initialize the callback instance.
 
         Parameters:
         folder_path (str, optional): The folder path to save the data. Defaults to None.
@@ -88,8 +82,7 @@ class MyCallback(Callback):
         self.folder_path = folder_path
 
     def notify(self, X, F) -> None:
-        """
-        Notify the callback of a new iteration.
+        """Notify the callback of a new iteration.
 
         Parameters:
         algorithm: The PyMOO algorithm instance.
@@ -133,6 +126,7 @@ def parametrize(
         callback = MyCallback()
 
     for i in range(n_gen):
+        print(i + 1)
         pop = algorithm.ask()
         X = pop.get("X")
         data = Parallel(n_jobs=n_jobs)(
@@ -148,8 +142,6 @@ def parametrize(
         # returned the evaluated individuals which have been evaluated or even modified
         algorithm.tell(infills=pop)
 
-        # do same more things, printing, logging, storing or even modifying the algorithm object
-        print(algorithm.n_gen)
     res = algorithm.result()
     return res
 

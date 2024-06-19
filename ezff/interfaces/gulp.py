@@ -461,8 +461,11 @@ def _read_final_error(outfilename):
         err = None
         for line in fr:
             if "Final sum of squares" in line:
-                err = float(line.split('=')[-1].strip())
-    return err if err else 10**10
+                try:
+                    err = float(line.split('=')[-1].strip())
+                except ValueError:
+                    err = 10**30
+    return err if err else 10**30
 
 def _read_structure(outfilename, relax_cell=True, initial_box=None, D='3'):
     import re

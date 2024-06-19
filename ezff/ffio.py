@@ -1,11 +1,14 @@
-"""This module provide methods to handle reading and writing forcefields"""
-import numpy as np
+"""This module provide methods to handle reading and writing forcefields."""
 import time
-from ezff.utils.reaxff import reax_forcefield
 from collections import OrderedDict
 
+import numpy as np
+
+from ezff.utils.reaxff import reax_forcefield
+
+
 def read_variable_bounds(filename):
-    """Read permissible lower and upper bounds for decision variables used in forcefields optimization
+    """Read permissible lower and upper bounds for decision variables used in forcefields optimization.
 
     :param filename: Name of text file listing bounds for each decision variable that must be optimized
     :type filename: str
@@ -14,7 +17,9 @@ def read_variable_bounds(filename):
     :type verbose: bool
     """
     variable_bounds = OrderedDict()
-    while True: # Force-read the parameter bounds file. This will loop until something is read-in. This is required if multiple ranks access the same file at the same time
+# Force-read the parameter bounds file. This will loop until something is read-in.
+# This is required if multiple ranks access the same file at the same time.
+    while True:
         time.sleep(np.random.rand())
         with open(filename, 'r') as variable_bounds_file:
             for line in variable_bounds_file:
@@ -28,7 +33,6 @@ def read_variable_bounds(filename):
             break
 
     return variable_bounds
-
 
 
 def read_forcefield_template(template_filename):
@@ -47,9 +51,8 @@ def read_forcefield_template(template_filename):
     return template_string
 
 
-
-def generate_forcefield(template_string, parameters, FFtype = None, outfile = None, MD = 'GULP'):
-    """Generate a new forcefield from the template by replacing variables with numerical values
+def generate_forcefield(template_string, parameters, FFtype=None, outfile=None, MD='GULP'):
+    """Generate a new forcefield from the template by replacing variables with numerical values.
 
     :param template_string: Text of the forcefield template
     :type template_string: str
