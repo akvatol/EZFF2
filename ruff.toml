@@ -48,4 +48,4 @@ ignore = ["UP015", "D104"]
 max-complexity = 10
 
 [lint.pydocstyle]
-convention = "google"
+convention = "numpy"
