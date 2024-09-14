@@ -8,11 +8,11 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "~3.11"
-niapy = "^2.3.1"
 pymoo = "^0.6.1.1"
-nevergrad = "^1.0.3"
 joblib = "^1.4.2"
 pandas = "^2.2.2"
+ase = "^3.23.0"
+pyxtal = "^1.0.3"
 
 
 [tool.poetry.group.test.dependencies]
