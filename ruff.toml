@@ -33,7 +33,6 @@ target-version = "py310"
 [lint]
 extend-select = [
   "UP",  # pyupgrade
-  "D",   # pydocstyle
   "E",   # pycodestyle
   "W",   # pycodestyle
   "C",   # mccabe
@@ -42,10 +41,10 @@ extend-select = [
   "TRY", # tryceratops
 ]
 
-ignore = ["UP015", "D104"]
+ignore = ["UP015"]
 
 [lint.mccabe]
 max-complexity = 10
 
 [lint.pydocstyle]
-convention = "google"
+convention = "numpy"

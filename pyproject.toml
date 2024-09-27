@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "ezff2"
+version = "0.1.0"
+description = "Simple tool for force-fields optimization"
+authors = ["akvatol <a.v.daomnin@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "~3.11"
+pymoo = "^0.6.1.1"
+joblib = "^1.4.2"
+pandas = "^2.2.2"
+ase = "^3.23.0"
+pyxtal = "^1.0.3"
+pymatgen = "^2024.9.17.1"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.2.2"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.10"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
