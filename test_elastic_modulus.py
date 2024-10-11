@@ -1,4 +1,5 @@
 import pytest
+from ezff.parsers.gulp_parser import GulpParser
 from elastic_modulus import elastic_modulus
 
 @pytest.mark.parametrize("content, expected_shape, expected_value", [
