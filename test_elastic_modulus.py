@@ -1,6 +1,5 @@
 import pytest
 from ezff.parsers.gulp_parser import GulpParser
-from elastic_modulus import elastic_modulus
 
 @pytest.mark.parametrize("content, expected_shape, expected_value", [
     ("""
@@ -34,7 +33,8 @@ Indices      1         2         3         4         5         6
     ("without any elastic constant matrix.", (6, 6), 1e6),
 ])
 def test_elastic_modulus(content, expected_shape, expected_value):
-    result = elastic_modulus(content)
+    elastic_modulus_func = parser._GulpParser__extractors['elastic_modulus']
+    result = elastic_modulus_func(content)
     assert result is not None
     assert len(result) == 1
     assert result[0].shape == expected_shape
