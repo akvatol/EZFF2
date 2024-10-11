@@ -89,7 +89,7 @@ class GulpParser(BaseParser):
 
         return shear_moduli or [[1e6]]
 
-    def phonon_gamma(self, content: str, n: int = 100) -> List[List[float]]:
+    def phonon_gamma(self, content: str, n: int = 12) -> List[List[float]]:
         pattern = r"Frequencies \(cm-1\) \[NB: Negative implies an imaginary mode\]:\s*\n\s*((?:[-\d.\s]+\n)+)"
         frequency_blocks = re.findall(pattern, content, re.MULTILINE)
 
